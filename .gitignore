@@ -1,0 +1,26 @@
+# Secrets and local config
+.env
+.env.bak
+.env.*.local
+
+# Python environments and caches
+.venv/
+.venv-*/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
+# Downloaded / generated data
+data/raw/
+data/raw/**
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Archives
+*.zip
