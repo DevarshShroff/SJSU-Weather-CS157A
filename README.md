@@ -1,8 +1,9 @@
-# Part 1 · Database Schema & Data Pipeline
+# SJSU Campus Weather Monitoring & Alerts
 
 **CS 157A — SJSU Campus Weather Monitoring & Alerts**
 
-This contribution owns how weather data is modeled in MySQL and how the public SJSU station CSVs are imported.
+This repository combines the MySQL data pipeline and Flask backend at the
+project root.
 
 ## What this part includes
 
@@ -13,6 +14,8 @@ This contribution owns how weather data is modeled in MySQL and how the public S
 | `station_catalog.py` | Hard-coded map of which variables each station reports |
 | `scripts/download_sjsu_data.py` | Downloads CSVs from met.sjsu.edu into `data/raw/` |
 | `tests/test_loader.py` | Unit tests for loader helpers |
+| `app.py` | Flask routes, authentication, admin imports, and database CLI |
+| `requirements.txt` | Python dependencies |
 | `.env.example` | Expected MySQL connection variables |
 
 ## Design highlights
@@ -23,7 +26,24 @@ This contribution owns how weather data is modeled in MySQL and how the public S
 
 ## How it fits the full project
 
-The Flask app (`Part 2`) and UI (`Part 3`) query the tables defined here. Setup (`Part 4`) calls `flask init-db` and `flask load-data`, which use this schema and loader.
+The Flask app (`Part 2`) queries the tables defined here. Its database CLI
+commands use this root schema and loader.
+
+## Setup
+
+Create a Python environment, install `requirements.txt`, and copy `.env.example`
+to `.env` with your MySQL credentials and a stable, random `SECRET_KEY`. Then:
+
+```bash
+python -m pip install -r requirements.txt
+flask --app app init-db
+python scripts/download_sjsu_data.py
+flask --app app load-data
+flask --app app data-stats
+flask --app app run
+```
+
+The MySQL account must be able to create the database for `init-db`.
 
 ## Local notes
 
