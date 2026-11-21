@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Compare{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Compare weather data</h1></div>
+<form method="get" class="mb-4">
+  <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
+    {% for key, label in [('a','Series A'),('b','Series B')] %}
+    {% set entry = series|selectattr('key', 'equalto', key)|first %}
+    <div class="col">
+      <div class="card h-100">
+        <div class="card-header"><h2 class="series-key series-key--{{ key }}">{{ label }}</h2></div>
+        <div class="card-body">
+          <label class="form-label" for="station_{{ key }}">Station</label>
+          <select class="form-select" id="station_{{ key }}" name="station_{{ key }}" data-autosubmit required><option value="">Choose station</option>{% for s in stations %}<option value="{{ s.id }}" {{ 'selected' if s.id == picked[key] }}>{{ s.name }}</option>{% endfor %}</select>
+          {% if entry and entry.span %}
+          <div class="row g-3 mt-0">
+            <div class="col-sm-6 col-md-12 col-xl-6"><label class="form-label" for="start_{{ key }}">From</label><input class="form-control" type="datetime-local" id="start_{{ key }}" name="start_{{ key }}" min="{{ entry.span[0]|dtlocal }}" max="{{ entry.span[1]|dtlocal }}" value="{{ entry.start|dtlocal }}"></div>
+            <div class="col-sm-6 col-md-12 col-xl-6"><label class="form-label" for="end_{{ key }}">To</label><input class="form-control" type="datetime-local" id="end_{{ key }}" name="end_{{ key }}" min="{{ entry.span[0]|dtlocal }}" max="{{ entry.span[1]|dtlocal }}" value="{{ entry.end|dtlocal }}"></div>
+            <div class="col-12 section-note">{{ entry.station }} data from {{ entry.span[0] }} to {{ entry.span[1] }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="toolbar">
+    <div class="row g-3 align-items-end">
+      <div class="{{ 'col-lg-6' if series else 'col-12' }}"><label class="form-label" for="variable_id">Measurement</label><select class="form-select" id="variable_id" name="variable_id" data-autosubmit required {{ 'disabled' if not shared }}><option value="">{{ 'Choose a measurement both stations record' if shared else 'Pick both stations first' }}</option>{% for v in shared %}<option value="{{ v.id }}" {{ 'selected' if variable and v.id == variable.id }}>{{ v.name }} ({{ v.unit }})</option>{% endfor %}</select></div>
+      {% if series %}<div class="col-lg-6 d-flex flex-wrap align-items-center gap-3"><button class="btn btn-primary">Compare series</button><span class="section-note">Each series defaults to its station's latest 72 hours.</span></div>{% endif %}
+    </div>
+  </div>
+</form>
+{% if series %}
+<div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
+  {% for entry in series %}
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-header card-header--split"><h2 class="series-key series-key--{{ entry.key }}">Series {{ entry.key|upper }}</h2><span class="section-note">{{ entry.station }} · {{ variable.name }}</span></div>
+      {% if entry.summary %}
+      <div class="stat-strip stat-strip--compact">
+        <div class="stat-strip__item"><div class="stat-strip__label">Readings</div><div class="stat-strip__value">{{ entry.summary.count }}</div></div>
+        {% for label, value in [('Minimum',entry.summary.minimum),('Maximum',entry.summary.maximum),('Average',entry.summary.average)] %}
+        <div class="stat-strip__item"><div class="stat-strip__label">{{ label }}</div><div class="stat-strip__value">{{ '%.2f'|format(value) }} <span class="reading-unit">{{ variable.unit }}</span></div></div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="card-body section-note">No readings found for this series.</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if series|selectattr('points')|list %}
+<div class="card">
+  <div class="card-header"><h2>{{ variable.name }} ({{ variable.unit }})</h2></div>
+  <div class="card-body"><div class="chart-well"><div class="chart-box"><canvas id="comparison"></canvas></div></div></div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if series|selectattr('points')|list %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script>
+Chart.defaults.font.family='Inter, system-ui, -apple-system, sans-serif';Chart.defaults.color='#566478';Chart.defaults.borderColor='#E2E8F0';
+new Chart(document.getElementById('comparison'),{type:'line',data:{labels:{{ (series[0].points + series[1].points)|map(attribute='observed_at')|unique|sort|list|tojson }},datasets:[{label:{{ ('Series A · ' ~ series[0].station)|tojson }},data:{{ series[0].points|tojson }},parsing:{xAxisKey:'observed_at',yAxisKey:'value'},borderColor:'#0055A2',backgroundColor:'#0055A2',borderWidth:2,pointRadius:c=>c.dataset.data.length<60?3:0,pointHoverRadius:4},{label:{{ ('Series B · ' ~ series[1].station)|tojson }},data:{{ series[1].points|tojson }},parsing:{xAxisKey:'observed_at',yAxisKey:'value'},borderColor:'#B8860B',backgroundColor:'#B8860B',borderWidth:2,pointRadius:c=>c.dataset.data.length<60?3:0,pointHoverRadius:4}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},spanGaps:true,plugins:{legend:{align:'start',labels:{boxWidth:18,boxHeight:2}}},scales:{x:{type:'category',title:{display:true,text:'Time'},grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0,callback(value){const all=this.getLabels(),text=this.getLabelForValue(value);return all[0].slice(0,4)===all[all.length-1].slice(0,4)?text.slice(5,16):text.slice(0,10);}}},y:{title:{display:true,text:{{ (variable.name ~ ' (' ~ variable.unit ~ ')')|tojson }}}}}}});
+</script>{% endif %}{% endblock %}

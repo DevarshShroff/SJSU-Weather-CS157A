@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block page %}
+<div class="landing">
+  <section class="landing-hero">
+    <div class="container-xl">
+      <div class="row g-5 align-items-center">
+        <div class="col-lg-7">
+          <p class="landing-hero__eyebrow">Campus weather, made useful</p>
+          <h1>Explore SJSU weather history and catch important changes.</h1>
+          <p class="landing-hero__lede">Search observations, inspect trends, export data, and receive alerts when a measurement crosses your threshold.</p>
+          <div class="landing-hero__actions">
+            {% if g.user %}
+            <a class="btn btn-accent btn-lg" href="{{ url_for('observations') }}">Go to Dashboard</a>
+            {% else %}
+            <a class="btn btn-accent btn-lg" href="{{ url_for('register') }}">Create account</a>
+            <a class="btn btn-ghost-light btn-lg" href="{{ url_for('login') }}">Log in</a>
+            {% endif %}
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="station-roster">
+            <h2 class="station-roster__title">Stations in the archive</h2>
+            <ul>
+              {% for name, code in [('Blackberry Hill','SJS06'),('CZU Soil Moisture','SJS62'),('DH Roof','SJS01'),('Mt. Diablo Summit','SJS02'),('Mt. Umunhum','SJS04'),('PG&E San Ramon','SJS61'),('Portable 2','SJS41'),('Spring Valley','SJS05')] %}
+              <li><span>{{ name }}</span><span>{{ code }}</span></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="container-xl landing-features">
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+      <div class="col">
+        <div class="feature-card">
+          <svg class="feature-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          <h2>Inspect any station</h2>
+          <p>Pull a measurement's history for any date range, chart it, and export the readings as CSV.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="feature-card">
+          <svg class="feature-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 12 4-5 3 3 5-6"/><path d="m7 17 4-2 3 1 5-3"/></svg>
+          <h2>Compare two series</h2>
+          <p>Line up a shared measurement from two stations and read their ranges side by side.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="feature-card">
+          <svg class="feature-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <h2>Set your thresholds</h2>
+          <p>Write a rule for a station and measurement. Matching readings land in your notifications.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

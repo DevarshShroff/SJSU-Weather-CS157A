@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}Observations{% endblock %}
+{% block content %}
+{% set primary = [('relative_humidity','Humidity'),('wind_speed_average','Wind'),('solar_radiation','Solar'),('rainfall','Rainfall')] %}
+{% set featured = ['air_temperature','relative_humidity','wind_speed_average','solar_radiation','rainfall'] %}
+<div class="page-head">
+  <h1>Weather observations</h1>
+  {% if span %}<a class="btn btn-outline-primary" href="{{ url_for('export_observations', station_id=station_id, variable_id=variable.id, start=start|dtlocal, end=end|dtlocal) }}">Export CSV</a>{% endif %}
+</div>
+<form class="toolbar mb-4" method="get">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-6"><label class="form-label" for="station_id">Station</label><select class="form-select" id="station_id" name="station_id" data-autosubmit><option value="">All stations (latest readings)</option>{% for s in stations %}<option value="{{ s.id }}" {{ 'selected' if s.id == station_id }}>{{ s.name }}</option>{% endfor %}</select></div>
+    <div class="col-md-6"><label class="form-label" for="variable_id">Measurement</label><select class="form-select" id="variable_id" name="variable_id" data-autosubmit {{ 'disabled' if not station_id }}><option value="">{{ 'Choose a measurement' if station_id else 'Pick a station first' }}</option>{% for v in choices %}<option value="{{ v.id }}" {{ 'selected' if variable and v.id == variable.id }}>{{ v.name }} ({{ v.unit }})</option>{% endfor %}</select></div>
+    {% if span %}
+    <div class="col-md-5"><label class="form-label" for="start">From</label><input class="form-control" type="datetime-local" id="start" name="start" min="{{ span[0]|dtlocal }}" max="{{ span[1]|dtlocal }}" value="{{ start|dtlocal }}"></div>
+    <div class="col-md-5"><label class="form-label" for="end">To</label><input class="form-control" type="datetime-local" id="end" name="end" min="{{ span[0]|dtlocal }}" max="{{ span[1]|dtlocal }}" value="{{ end|dtlocal }}"></div>
+    <div class="col-md-2"><button class="btn btn-primary w-100">Apply dates</button></div>
+    <div class="col-12 section-note">Readings available from {{ span[0] }} to {{ span[1] }}.{% if default_window %} Showing the latest 72 hours by default.{% endif %}</div>
+    {% else %}<noscript><div class="col-md-2"><button class="btn btn-primary w-100">Show</button></div></noscript>{% endif %}
+  </div>
+</form>
+
+{% if not station_id and cards %}
+{% set live_count = cards|rejectattr('offline')|list|length %}
+<ul class="quick-stats" aria-label="Network summary">
+  <li>Total Stations <strong>{{ cards|length }}</strong></li>
+  <li><span class="status-dot" aria-hidden="true"></span>Reporting Live <strong>{{ live_count }}</strong></li>
+  <li><span class="status-dot status-dot--offline" aria-hidden="true"></span>Offline <strong>{{ cards|length - live_count }}</strong></li>
+  <li>Network Status: <strong>{{ 'Normal' if live_count * 2 >= cards|length else 'Degraded' }}</strong></li>
+</ul>
+{% endif %}
+
+<div class="row {{ 'row-cols-1' if station_id else 'row-cols-1 row-cols-md-2 row-cols-lg-3' }} g-4 mb-4">
+  {% for card in cards %}
+  {% set hero = card.readings|selectattr('0.code', 'equalto', 'air_temperature')|first %}
+  {% set others = card.readings|rejectattr('0.code', 'in', featured)|list %}
+  <div class="col">
+    <article class="card h-100 station-card {{ 'station-card--wide' if station_id }}">
+      <div class="card-body">
+        <div class="station-card__head">
+          <div>
+            <a class="station-card__name" href="{{ url_for('observations', station_id=card.station.id) }}">{{ card.station.name }}</a>
+            <div class="station-card__meta"><code>{{ card.station.code }}</code> · {% if card.observed_at %}{{ card.observed_at.strftime('%b %d, %Y, %H:%M') }}{% else %}No readings yet{% endif %}</div>
+          </div>
+          {% if card.offline %}<span class="status-pill status-pill--offline">Offline</span>{% else %}<span class="status-pill status-pill--live">Live</span>{% endif %}
+        </div>
+        <div class="station-card__data">
+          <div class="reading-hero">
+            <div class="reading-hero__label">Air temperature</div>
+            <div class="reading-hero__value">{% if hero and hero[1] is not none %}{{ '%.1f'|format(hero[1]|float) }}<span class="reading-hero__unit">{{ hero[0].unit }}</span>{% else %}<span class="reading-hero__empty">—</span>{% endif %}</div>
+          </div>
+          <dl class="reading-grid">
+            {% for code, label in primary %}
+            {% set reading = card.readings|selectattr('0.code', 'equalto', code)|first %}
+            <div {% if reading %}title="{{ reading[0].name }}"{% else %}title="Not reported by this station"{% endif %}>
+              <dt>{{ label }}</dt>
+              <dd>{% if reading and reading[1] is not none %}{{ reading[1]|float|round(2) }} <span class="reading-unit">{{ reading[0].unit }}</span>{% else %}—{% endif %}</dd>
+            </div>
+            {% endfor %}
+          </dl>
+        </div>
+        {% if others %}
+        <details class="more-readings" {{ 'open' if station_id }}>
+          <summary>{{ others|length }} more reading{{ 's' if others|length != 1 }}</summary>
+          <dl class="reading-grid">
+            {% for v, value in others %}
+            <div>
+              <dt>{{ v.name }}</dt>
+              <dd>{% if value is not none %}{{ value|float|round(2) }} <span class="reading-unit">{{ v.unit }}</span>{% else %}—{% endif %}</dd>
+            </div>
+            {% endfor %}
+          </dl>
+        </details>
+        {% endif %}
+      </div>
+    </article>
+  </div>
+  {% else %}
+  <div class="col-12"><div class="card"><div class="empty-state">No active stations yet. An administrator can add one from the Admin page.</div></div></div>
+  {% endfor %}
+</div>
+
+{% if station_id and not variable %}
+<p class="section-note">Choose a measurement to see its history, statistics and chart.</p>
+{% elif variable and not span %}
+<div class="alert alert-secondary">{{ cards[0].station.name }} has no {{ variable.name|lower }} readings yet.</div>
+{% elif span %}
+<div class="card mb-4">
+  <div class="stat-strip">
+    {% for label, value in [('Readings',stats.count if stats else 0),('Minimum',stats.minimum if stats else none),('Maximum',stats.maximum if stats else none),('Average',stats.average if stats else none)] %}
+    <div class="stat-strip__item"><div class="stat-strip__label">{{ label }}</div><div class="stat-strip__value">{% if label == 'Readings' %}{{ value }}{% elif value is not none %}{{ '%.2f'|format(value) }} <span class="reading-unit">{{ variable.unit }}</span>{% else %}—{% endif %}</div></div>
+    {% endfor %}
+  </div>
+</div>
+{% if chart %}
+<div class="card mb-4">
+  <div class="card-header card-header--split"><h2>{{ variable.name }} ({{ variable.unit }})</h2>{% if chart_label %}<span class="section-note">{{ chart_label|capitalize }}</span>{% endif %}</div>
+  <div class="card-body"><div class="chart-well"><div class="chart-box"><canvas id="trend"></canvas></div></div></div>
+</div>
+{% endif %}
+<div class="card overflow-hidden"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Time</th><th class="text-end">{{ variable.name }} ({{ variable.unit }})</th></tr></thead><tbody>
+{% for row in rows %}<tr><td>{{ row.observed_at }}</td><td class="text-end">{{ row.value|float|round(2) }}</td></tr>{% else %}<tr><td colspan="2" class="empty-row">No readings in this date range.</td></tr>{% endfor %}
+</tbody></table></div>{% if rows|length == 500 %}<div class="card-footer section-note">Showing the newest 500 readings; export the CSV for the full range.</div>{% endif %}</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if chart %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script>
+Chart.defaults.font.family='Inter, system-ui, -apple-system, sans-serif';Chart.defaults.color='#566478';Chart.defaults.borderColor='#E2E8F0';
+new Chart(document.getElementById('trend'), {type:'line', data:{labels:{{ chart|map(attribute='observed_at')|list|tojson }},datasets:[{label:{{ (variable.name ~ ' (' ~ variable.unit ~ ')' ~ (', ' ~ chart_label if chart_label else ''))|tojson }},data:{{ chart|map(attribute='value')|list|tojson }},borderColor:'#0055A2',backgroundColor:'rgba(0,85,162,.1)',borderWidth:2,fill:true,tension:.2,pointRadius:c=>c.dataset.data.length<60?3:0,pointHoverRadius:4}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Time'},grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0,callback(value){const all=this.getLabels(),text=this.getLabelForValue(value);return all[0].slice(0,4)===all[all.length-1].slice(0,4)?text.slice(5,16):text.slice(0,10);}}},y:{title:{display:true,text:{{ (variable.name ~ ' (' ~ variable.unit ~ ')')|tojson }}}}}}});
+</script>{% endif %}{% endblock %}

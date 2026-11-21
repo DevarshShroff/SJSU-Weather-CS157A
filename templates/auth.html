@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}{{ mode|title }}{% endblock %}
+{% block page %}
+<div class="auth-shell">
+  <div class="auth-panel">
+    <a class="auth-lockup" href="{{ url_for('index') }}">
+      <span class="auth-lockup__mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></span>
+      <span><span class="auth-lockup__name">SJSU Weather</span><span class="auth-lockup__sub">Campus Weather Monitoring &amp; Alerts Platform</span></span>
+    </a>
+    <div class="card"><div class="card-body">
+      <h1>{{ 'Create an account' if mode == 'register' else 'Welcome back' }}</h1>
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if mode == 'register' %}
+        <div class="mb-3"><label class="form-label" for="display_name">Display name</label><input class="form-control" id="display_name" name="display_name" required maxlength="100"></div>
+        {% endif %}
+        <div class="mb-3"><label class="form-label" for="email">Email</label><input class="form-control" type="email" id="email" name="email" required autocomplete="email"></div>
+        <div class="mb-3"><label class="form-label" for="password">Password</label><input class="form-control" type="password" id="password" name="password" required minlength="10" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}"></div>
+        <button class="btn btn-primary w-100">{{ 'Register' if mode == 'register' else 'Log in' }}</button>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
